@@ -1,11 +1,9 @@
-const ws = new WebSocket("wss://skill-arena-backend.onrender.com");
-
 <!DOCTYPE html>
 <html lang="de">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TERRITORY 1v1 | SKILL-BASED</title>
+    <title>TERRITORY 1v1 | REAL-TIME MULTIPLAYER</title>
     <style>
         * {
             margin: 0;
@@ -21,8 +19,187 @@ const ws = new WebSocket("wss://skill-arena-backend.onrender.com");
             overflow: hidden;
             height: 100vh;
             display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .screen {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: none;
             flex-direction: column;
-            position: relative;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .screen.active {
+            display: flex;
+        }
+
+        /* Lobby Screen */
+        #lobbyScreen {
+            background: #111;
+            padding: 40px;
+            border-radius: 10px;
+            border: 1px solid #222;
+            max-width: 800px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .title {
+            font-size: 32px;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 30px;
+            color: #fff;
+            text-shadow: 0 0 10px #00aaff;
+        }
+
+        .subtitle {
+            color: #888;
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .panel {
+            background: #1a1a1a;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid #333;
+        }
+
+        .panel h2 {
+            color: #9d4edd;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        .button {
+            background: linear-gradient(90deg, #9d4edd, #7b2cbf);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            margin: 5px;
+            transition: transform 0.1s, opacity 0.2s;
+        }
+
+        .button:hover:not(:disabled) {
+            transform: scale(1.05);
+            opacity: 0.9;
+        }
+
+        .button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .button.secondary {
+            background: linear-gradient(90deg, #333, #444);
+        }
+
+        .button.success {
+            background: linear-gradient(90deg, #006600, #009900);
+        }
+
+        .lobby-list {
+            list-style: none;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .lobby-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 15px;
+            background: #222;
+            margin-bottom: 8px;
+            border-radius: 6px;
+            border-left: 4px solid #00bbff;
+        }
+
+        .lobby-code {
+            font-family: monospace;
+            font-size: 18px;
+            font-weight: bold;
+            letter-spacing: 2px;
+            color: #fff;
+        }
+
+        .lobby-players {
+            color: #aaa;
+            font-size: 14px;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #aaa;
+            font-size: 14px;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 10px;
+            background: #222;
+            border: 1px solid #333;
+            border-radius: 6px;
+            color: #fff;
+            font-size: 16px;
+            text-align: center;
+            font-family: monospace;
+            letter-spacing: 2px;
+        }
+
+        .status {
+            padding: 10px;
+            border-radius: 6px;
+            margin: 10px 0;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        .status.info {
+            background: rgba(0, 187, 255, 0.1);
+            border: 1px solid #00bbff;
+            color: #00bbff;
+        }
+
+        .status.error {
+            background: rgba(255, 50, 50, 0.1);
+            border: 1px solid #ff3232;
+            color: #ff3232;
+        }
+
+        .status.success {
+            background: rgba(0, 200, 0, 0.1);
+            border: 1px solid #00c800;
+            color: #00c800;
+        }
+
+        /* Game Screen */
+        #gameScreen {
+            padding: 0;
+        }
+
+        .game-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
         }
 
         .top-bar {
@@ -33,6 +210,7 @@ const ws = new WebSocket("wss://skill-arena-backend.onrender.com");
             background: #111;
             border-bottom: 1px solid #222;
             height: 60px;
+            flex-shrink: 0;
         }
 
         .pool {
@@ -51,84 +229,46 @@ const ws = new WebSocket("wss://skill-arena-backend.onrender.com");
             text-shadow: 0 0 10px #00aaff;
         }
 
-        .game-container {
-            display: flex;
-            flex: 1;
-            overflow: hidden;
-        }
-
-        .sidebar {
-            width: 220px;
-            background: #0a0a0a;
-            padding: 15px;
-            border-right: 1px solid #222;
-            overflow-y: auto;
-        }
-
-        .sidebar.right {
-            border-right: none;
-            border-left: 1px solid #222;
-        }
-
-        .sidebar-title {
-            color: #888;
-            font-size: 12px;
-            margin-bottom: 10px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .live-feed {
-            list-style: none;
-        }
-
-        .live-feed li {
-            padding: 8px 10px;
-            margin-bottom: 6px;
-            background: #151515;
-            border-left: 3px solid #ff5500;
-            font-size: 13px;
-            color: #ccc;
-        }
-
-        .player-stats {
-            margin-top: 20px;
-        }
-
-        .stat {
-            display: flex;
-            justify-content: space-between;
-            padding: 10px;
-            background: #151515;
-            margin-bottom: 8px;
-            border-radius: 4px;
-        }
-
-        .stat.you {
-            border-left: 4px solid #9d4edd;
-        }
-
-        .stat.opponent {
-            border-left: 4px solid #00bbff;
-        }
-
-        .percentage {
-            font-weight: bold;
-            font-size: 16px;
+        .lobby-id-display {
+            font-family: monospace;
+            font-size: 18px;
+            color: #9d4edd;
+            letter-spacing: 2px;
         }
 
         .canvas-container {
             flex: 1;
             position: relative;
+            overflow: hidden;
             display: flex;
             justify-content: center;
             align-items: center;
-            overflow: hidden;
         }
 
         #gameCanvas {
             background: #000;
             display: block;
+        }
+
+        .player-label {
+            position: absolute;
+            top: 10px;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        #player1Label {
+            left: 10px;
+            background: rgba(157, 78, 221, 0.2);
+            border: 1px solid #9d4edd;
+        }
+
+        #player2Label {
+            right: 10px;
+            background: rgba(0, 187, 255, 0.2);
+            border: 1px solid #00bbff;
         }
 
         .fail-overlay {
@@ -157,7 +297,7 @@ const ws = new WebSocket("wss://skill-arena-backend.onrender.com");
         .controls {
             position: absolute;
             bottom: 20px;
-            right: 240px;
+            right: 20px;
             background: rgba(20, 20, 20, 0.9);
             padding: 15px 25px;
             border-radius: 10px;
@@ -189,144 +329,145 @@ const ws = new WebSocket("wss://skill-arena-backend.onrender.com");
             border-color: #9d4edd;
         }
 
-        .restart-btn {
-            background: linear-gradient(90deg, #9d4edd, #7b2cbf);
-            color: white;
-            border: none;
-            padding: 12px 25px;
-            font-size: 16px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: bold;
-            margin-top: 15px;
-            transition: transform 0.1s;
-        }
-
-        .restart-btn:hover {
-            transform: scale(1.05);
-        }
-
-        .hint {
-            color: #666;
-            font-size: 12px;
-            margin-top: 10px;
-        }
-
-        .player-label {
+        .stats-overlay {
             position: absolute;
-            top: 10px;
-            padding: 5px 10px;
-            border-radius: 4px;
-            font-weight: bold;
+            top: 70px;
+            left: 20px;
+            background: rgba(20, 20, 20, 0.8);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #333;
+            min-width: 200px;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
             font-size: 14px;
         }
 
-        #player1Label {
-            left: 10px;
-            background: rgba(157, 78, 221, 0.2);
-            border: 1px solid #9d4edd;
+        .stat-label {
+            color: #aaa;
         }
 
-        #player2Label {
-            right: 10px;
-            background: rgba(0, 187, 255, 0.2);
-            border: 1px solid #00bbff;
+        .stat-value {
+            font-weight: bold;
         }
 
-        .arena-border {
-            position: absolute;
-            box-shadow: 0 0 0 2px #333;
-            pointer-events: none;
-            transition: all 1s linear;
+        .stat-value.you {
+            color: #9d4edd;
+        }
+
+        .stat-value.opponent {
+            color: #00bbff;
         }
     </style>
 </head>
 <body>
-    <div class="top-bar">
-        <div class="pool">POOL: 10 USDC (DEMO)</div>
-        <div class="timer" id="timer">60</div>
-        <div class="hint">NO RNG • PURE SKILL</div>
+    <!-- Lobby Screen -->
+    <div id="lobbyScreen" class="screen active">
+        <div class="title">TERRITORY CONTROL 1v1</div>
+        <div class="subtitle">NO RNG • PURE SKILL • REAL MULTIPLAYER</div>
+        
+        <div class="panel">
+            <h2>CREATE LOBBY</h2>
+            <p style="color: #888; margin-bottom: 15px; font-size: 14px;">
+                Create a new lobby and share the code with your opponent.
+            </p>
+            <button id="createLobbyBtn" class="button">CREATE NEW LOBBY</button>
+        </div>
+        
+        <div class="panel">
+            <h2>JOIN LOBBY</h2>
+            <div class="input-group">
+                <label for="lobbyCodeInput">LOBBY CODE</label>
+                <input type="text" id="lobbyCodeInput" maxlength="5" placeholder="ABCDE">
+            </div>
+            <button id="joinLobbyBtn" class="button success">JOIN LOBBY</button>
+        </div>
+        
+        <div class="panel">
+            <h2>OPEN LOBBIES</h2>
+            <div class="status info" id="lobbyStatus">Click "Refresh" to see open lobbies</div>
+            <ul class="lobby-list" id="lobbyList">
+                <!-- Lobbies will be populated here -->
+            </ul>
+            <button id="refreshLobbiesBtn" class="button secondary">REFRESH LIST</button>
+        </div>
+        
+        <div class="panel" style="text-align: center; background: transparent; border: none;">
+            <div class="status info" id="connectionStatus">Connecting to server...</div>
+            <div style="color: #666; font-size: 12px; margin-top: 20px;">
+                Controls: WASD or Arrow Keys • Avoid walls and trails
+            </div>
+        </div>
     </div>
 
-    <div class="game-container">
-        <div class="sidebar">
-            <div class="sidebar-title">Live Feed</div>
-            <ul class="live-feed" id="liveFeed">
-                <li>Match started</li>
-                <li>player23 joined</li>
-                <li>player87 eliminated</li>
-                <li>Territory: 54% vs 46%</li>
-            </ul>
-        </div>
-
-        <div class="canvas-container">
-            <div id="player1Label" class="player-label">YOU (PURPLE)</div>
-            <div id="player2Label" class="player-label">OPPONENT (CYAN)</div>
-            <canvas id="gameCanvas"></canvas>
-            <div class="arena-border" id="arenaBorder"></div>
-            <div class="fail-overlay" id="failOverlay">FAIL</div>
-        </div>
-
-        <div class="sidebar right">
-            <div class="sidebar-title">Player Stats</div>
-            <div class="player-stats">
-                <div class="stat you">
-                    <span>YOU</span>
-                    <span class="percentage" id="p1Percent">50%</span>
+    <!-- Game Screen -->
+    <div id="gameScreen" class="screen">
+        <div class="game-container">
+            <div class="top-bar">
+                <div class="pool">POOL: 10 USDC (DEMO)</div>
+                <div class="timer" id="timer">60</div>
+                <div class="lobby-id-display" id="lobbyIdDisplay">LOBBY: -----</div>
+            </div>
+            
+            <div class="canvas-container">
+                <div id="player1Label" class="player-label">YOU (PURPLE)</div>
+                <div id="player2Label" class="player-label">OPPONENT (CYAN)</div>
+                <canvas id="gameCanvas"></canvas>
+                <div class="fail-overlay" id="failOverlay">FAIL</div>
+                
+                <div class="stats-overlay">
+                    <div class="stat-row">
+                        <span class="stat-label">Territory:</span>
+                        <span class="stat-value you" id="p1Percent">0%</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Opponent:</span>
+                        <span class="stat-value opponent" id="p2Percent">0%</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Status:</span>
+                        <span class="stat-value" id="p1Status" style="color: #0f0;">ALIVE</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Opponent:</span>
+                        <span class="stat-value" id="p2Status" style="color: #0f0;">ALIVE</span>
+                    </div>
                 </div>
-                <div class="stat opponent">
-                    <span>OPPONENT</span>
-                    <span class="percentage" id="p2Percent">50%</span>
-                </div>
-                <div class="stat">
-                    <span>Status</span>
-                    <span style="color: #0f0;" id="p1Status">ALIVE</span>
-                </div>
-                <div class="stat">
-                    <span>Status</span>
-                    <span style="color: #0f0;" id="p2Status">ALIVE</span>
-                </div>
-                <div class="stat">
-                    <span>Territory</span>
-                    <span id="territoryCount">0 / 0</span>
+                
+                <div class="controls">
+                    <h3>CONTROLS</h3>
+                    <div>
+                        <div class="key" id="keyW">W</div>
+                    </div>
+                    <div>
+                        <div class="key" id="keyA">A</div>
+                        <div class="key" id="keyS">S</div>
+                        <div class="key" id="keyD">D</div>
+                    </div>
+                    <div>
+                        <span style="color:#888">or</span>
+                        <div class="key" id="keyUp">↑</div>
+                    </div>
+                    <div>
+                        <div class="key" id="keyLeft">←</div>
+                        <div class="key" id="keyDown">↓</div>
+                        <div class="key" id="keyRight">→</div>
+                    </div>
+                    <button id="leaveGameBtn" class="button secondary" style="margin-top: 15px;">LEAVE GAME</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="controls">
-        <h3>CONTROLS</h3>
-        <div>
-            <div class="key" id="keyW">W</div>
-        </div>
-        <div>
-            <div class="key" id="keyA">A</div>
-            <div class="key" id="keyS">S</div>
-            <div class="key" id="keyD">D</div>
-        </div>
-        <div>
-            <span style="color:#888">or</span>
-            <div class="key" id="keyUp">↑</div>
-        </div>
-        <div>
-            <div class="key" id="keyLeft">←</div>
-            <div class="key" id="keyDown">↓</div>
-            <div class="key" id="keyRight">→</div>
-        </div>
-        <button class="restart-btn" id="restartBtn">RESTART MATCH</button>
-        <div class="hint">Avoid walls, your trail, opponent's trail. Control territory!</div>
-    </div>
-
     <script>
-        // ==================== KONFIGURATION ====================
+        // Game Constants
         const CANVAS_WIDTH = 800;
         const CANVAS_HEIGHT = 600;
-        const GRID_SIZE = 4;
         const PLAYER_SIZE = 6;
-        const PLAYER_SPEED = 3.5;
-        const MAX_TIME = 60;
-        const SHRINK_START_TIME = 20;
-        const SHRINK_SPEED = 0.2;
         const COLORS = {
             background: '#000',
             p1: '#9d4edd',
@@ -336,453 +477,250 @@ const ws = new WebSocket("wss://skill-arena-backend.onrender.com");
             wall: '#222'
         };
 
-        // ==================== SPIELZUSTAND ====================
+        // Game State
+        let socket = null;
+        let playerId = null;
+        let lobbyId = null;
+        let isPlayerOne = false;
+        let currentScreen = 'lobby';
+        let gameState = null;
         let canvas, ctx;
-        let gameRunning = false;
-        let timer = MAX_TIME;
-        let timerInterval;
-        let animationId;
-        let arena = {
-            x: 50,
-            y: 50,
-            width: CANVAS_WIDTH - 100,
-            height: CANVAS_HEIGHT - 100
+        
+        // Player input state
+        const keys = {
+            up: false,
+            left: false,
+            down: false,
+            right: false
         };
-        let shrinkActive = false;
 
-        // Spielerobjekte
-        const player1 = {
-            x: arena.x + 100,
-            y: arena.y + arena.height / 2,
-            dx: PLAYER_SPEED,
-            dy: 0,
-            color: COLORS.p1,
-            trailColor: COLORS.p1Trail,
-            trail: [],
-            alive: true,
-            territory: 0,
-            keys: {
-                up: false,
-                left: false,
-                down: false,
-                right: false
+        // DOM Elements
+        const lobbyScreen = document.getElementById('lobbyScreen');
+        const gameScreen = document.getElementById('gameScreen');
+        const createLobbyBtn = document.getElementById('createLobbyBtn');
+        const joinLobbyBtn = document.getElementById('joinLobbyBtn');
+        const refreshLobbiesBtn = document.getElementById('refreshLobbiesBtn');
+        const lobbyCodeInput = document.getElementById('lobbyCodeInput');
+        const lobbyList = document.getElementById('lobbyList');
+        const lobbyStatus = document.getElementById('lobbyStatus');
+        const connectionStatus = document.getElementById('connectionStatus');
+        const timerDisplay = document.getElementById('timer');
+        const lobbyIdDisplay = document.getElementById('lobbyIdDisplay');
+        const failOverlay = document.getElementById('failOverlay');
+        const leaveGameBtn = document.getElementById('leaveGameBtn');
+
+        // Initialize WebSocket connection
+        function initWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}`;
+            
+            socket = new WebSocket(wsUrl);
+            
+            socket.onopen = () => {
+                console.log('Connected to server');
+                connectionStatus.textContent = 'Connected to server';
+                connectionStatus.className = 'status success';
+            };
+            
+            socket.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    handleServerMessage(data);
+                } catch (error) {
+                    console.error('Error parsing server message:', error);
+                }
+            };
+            
+            socket.onclose = () => {
+                console.log('Disconnected from server');
+                connectionStatus.textContent = 'Disconnected from server. Reconnecting...';
+                connectionStatus.className = 'status error';
+                
+                // Try to reconnect after 3 seconds
+                setTimeout(initWebSocket, 3000);
+            };
+            
+            socket.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                connectionStatus.textContent = 'Connection error';
+                connectionStatus.className = 'status error';
+            };
+        }
+
+        // Handle server messages
+        function handleServerMessage(data) {
+            switch (data.type) {
+                case 'connected':
+                    playerId = data.playerId;
+                    console.log('Player ID:', playerId);
+                    break;
+                    
+                case 'lobby_created':
+                    lobbyId = data.lobbyId;
+                    playerId = data.playerId;
+                    lobbyStatus.textContent = `Lobby created: ${lobbyId}. Waiting for opponent...`;
+                    lobbyStatus.className = 'status info';
+                    break;
+                    
+                case 'joined_lobby':
+                    lobbyId = data.lobbyId;
+                    playerId = data.playerId;
+                    isPlayerOne = data.isPlayerOne;
+                    showGameScreen();
+                    break;
+                    
+                case 'waiting_for_opponent':
+                    lobbyStatus.textContent = `Waiting for opponent to join...`;
+                    lobbyStatus.className = 'status info';
+                    break;
+                    
+                case 'game_starting':
+                    initCanvas();
+                    lobbyIdDisplay.textContent = `LOBBY: ${lobbyId}`;
+                    break;
+                    
+                case 'game_state':
+                    gameState = data;
+                    updateGameDisplay();
+                    break;
+                    
+                case 'lobby_list':
+                    updateLobbyList(data.lobbies);
+                    break;
+                    
+                case 'opponent_left':
+                case 'opponent_disconnected':
+                    showLobbyScreen();
+                    alert('Opponent disconnected. Returning to lobby.');
+                    break;
+                    
+                case 'error':
+                    alert(`Error: ${data.message}`);
+                    break;
             }
-        };
+        }
 
-        const player2 = {
-            x: arena.x + arena.width - 100,
-            y: arena.y + arena.height / 2,
-            dx: -PLAYER_SPEED,
-            dy: 0,
-            color: COLORS.p2,
-            trailColor: COLORS.p2Trail,
-            trail: [],
-            alive: true,
-            territory: 0,
-            lastTurnFrame: 0,
-            turnCooldown: 20
-        };
+        // Show lobby screen
+        function showLobbyScreen() {
+            lobbyScreen.classList.add('active');
+            gameScreen.classList.remove('active');
+            currentScreen = 'lobby';
+            gameState = null;
+            lobbyId = null;
+        }
 
-        // ==================== INITIALISIERUNG ====================
-        function init() {
+        // Show game screen
+        function showGameScreen() {
+            lobbyScreen.classList.remove('active');
+            gameScreen.classList.add('active');
+            currentScreen = 'game';
+        }
+
+        // Initialize canvas
+        function initCanvas() {
             canvas = document.getElementById('gameCanvas');
             ctx = canvas.getContext('2d');
             canvas.width = CANVAS_WIDTH;
             canvas.height = CANVAS_HEIGHT;
-
-            resetGame();
-            setupEventListeners();
-            draw();
-        }
-
-        function resetGame() {
-            gameRunning = true;
-            timer = MAX_TIME;
-            shrinkActive = false;
-            arena = {
-                x: 50,
-                y: 50,
-                width: CANVAS_WIDTH - 100,
-                height: CANVAS_HEIGHT - 100
-            };
-
-            player1.x = arena.x + 100;
-            player1.y = arena.y + arena.height / 2;
-            player1.dx = PLAYER_SPEED;
-            player1.dy = 0;
-            player1.trail = [];
-            player1.alive = true;
-            player1.territory = 0;
-            Object.keys(player1.keys).forEach(k => player1.keys[k] = false);
-
-            player2.x = arena.x + arena.width - 100;
-            player2.y = arena.y + arena.height / 2;
-            player2.dx = -PLAYER_SPEED;
-            player2.dy = 0;
-            player2.trail = [];
-            player2.alive = true;
-            player2.territory = 0;
-            player2.lastTurnFrame = 0;
-
-            document.getElementById('failOverlay').style.display = 'none';
-            updateTimerDisplay();
-            updateUI();
-
-            clearInterval(timerInterval);
-            timerInterval = setInterval(updateTimer, 1000);
-
-            cancelAnimationFrame(animationId);
-            animationId = requestAnimationFrame(gameLoop);
-        }
-
-        // ==================== EVENT LISTENER ====================
-        function setupEventListeners() {
-            document.addEventListener('keydown', (e) => {
-                if (!gameRunning) return;
-
-                switch(e.key.toLowerCase()) {
-                    case 'w': player1.keys.up = true; break;
-                    case 'a': player1.keys.left = true; break;
-                    case 's': player1.keys.down = true; break;
-                    case 'd': player1.keys.right = true; break;
-                    case 'arrowup': player1.keys.up = true; break;
-                    case 'arrowleft': player1.keys.left = true; break;
-                    case 'arrowdown': player1.keys.down = true; break;
-                    case 'arrowright': player1.keys.right = true; break;
-                }
-                updateKeyVisuals();
-            });
-
-            document.addEventListener('keyup', (e) => {
-                switch(e.key.toLowerCase()) {
-                    case 'w': player1.keys.up = false; break;
-                    case 'a': player1.keys.left = false; break;
-                    case 's': player1.keys.down = false; break;
-                    case 'd': player1.keys.right = false; break;
-                    case 'arrowup': player1.keys.up = false; break;
-                    case 'arrowleft': player1.keys.left = false; break;
-                    case 'arrowdown': player1.keys.down = false; break;
-                    case 'arrowright': player1.keys.right = false; break;
-                }
-                updateKeyVisuals();
-            });
-
-            document.getElementById('restartBtn').addEventListener('click', resetGame);
-        }
-
-        function updateKeyVisuals() {
-            const keyIds = {
-                'w': 'keyW', 'a': 'keyA', 's': 'keyS', 'd': 'keyD',
-                'arrowup': 'keyUp', 'arrowleft': 'keyLeft',
-                'arrowdown': 'keyDown', 'arrowright': 'keyRight'
-            };
-            Object.keys(keyIds).forEach(key => {
-                const elem = document.getElementById(keyIds[key]);
-                if (elem) {
-                    const keyName = key.replace('arrow', '');
-                    elem.classList.toggle('active', player1.keys[keyName]);
-                }
-            });
-        }
-
-        // ==================== KI LOGIK ====================
-        function updateAI() {
-            if (!player2.alive) return;
-
-            const frameCount = performance.now() / 16;
             
-            // Nur alle X Frames Entscheidungen treffen
-            if (frameCount - player2.lastTurnFrame < player2.turnCooldown) {
-                // Normale Bewegung beibehalten
-                player2.x += player2.dx;
-                player2.y += player2.dy;
-                return;
-            }
+            // Start rendering loop
+            requestAnimationFrame(renderGame);
+        }
 
-            // Mögliche Richtungen testen
-            const directions = [
-                {dx: PLAYER_SPEED, dy: 0},   // rechts
-                {dx: -PLAYER_SPEED, dy: 0},  // links
-                {dx: 0, dy: PLAYER_SPEED},   // unten
-                {dx: 0, dy: -PLAYER_SPEED}   // oben
-            ];
-
-            // Aktuelle Richtung beibehalten, wenn sicher
-            let bestDir = {dx: player2.dx, dy: player2.dy};
-            let bestScore = -Infinity;
-
-            // Spieler verfolgen (deterministisch basierend auf Position)
-            const dxToPlayer = player1.x - player2.x;
-            const dyToPlayer = player1.y - player2.y;
-            const distanceToPlayer = Math.sqrt(dxToPlayer*dxToPlayer + dyToPlayer*dyToPlayer);
-
-            for (const dir of directions) {
-                // Nicht in die entgegengesetzte Richtung
-                if (dir.dx === -player2.dx && dir.dy === -player2.dy) continue;
-
-                const nextX = player2.x + dir.dx * 5;
-                const nextY = player2.y + dir.dy * 5;
-
-                // Wandkollision vermeiden
-                if (nextX < arena.x + PLAYER_SIZE || nextX >= arena.x + arena.width - PLAYER_SIZE ||
-                    nextY < arena.y + PLAYER_SIZE || nextY >= arena.y + arena.height - PLAYER_SIZE) {
-                    continue;
+        // Update game display based on server state
+        function updateGameDisplay() {
+            if (!gameState) return;
+            
+            // Update timer
+            timerDisplay.textContent = gameState.timeLeft.toString().padStart(2, '0');
+            
+            // Find local player
+            const localPlayer = gameState.players.find(p => p.id === playerId);
+            const opponent = gameState.players.find(p => p.id !== playerId);
+            
+            if (localPlayer) {
+                // Update stats
+                const totalTerritory = gameState.players.reduce((sum, p) => sum + p.score, 0);
+                const p1Percent = totalTerritory > 0 ? Math.round((localPlayer.score / totalTerritory) * 100) : 0;
+                const p2Percent = totalTerritory > 0 ? Math.round(((opponent?.score || 0) / totalTerritory) * 100) : 0;
+                
+                document.getElementById('p1Percent').textContent = `${p1Percent}%`;
+                document.getElementById('p2Percent').textContent = `${p2Percent}%`;
+                document.getElementById('p1Status').textContent = localPlayer.alive ? 'ALIVE' : 'ELIMINATED';
+                document.getElementById('p1Status').style.color = localPlayer.alive ? '#0f0' : '#f00';
+                document.getElementById('p2Status').textContent = opponent ? (opponent.alive ? 'ALIVE' : 'ELIMINATED') : 'WAITING';
+                document.getElementById('p2Status').style.color = opponent ? (opponent.alive ? '#0f0' : '#f00') : '#888';
+                
+                // Show fail overlay if player died
+                if (!localPlayer.alive && !failOverlay.style.display || failOverlay.style.display === 'none') {
+                    failOverlay.style.display = 'flex';
                 }
-
-                // Trail-Kollision vermeiden
-                let trailCollision = false;
-                for (let i = 0; i < player2.trail.length - 5; i++) {
-                    const point = player2.trail[i];
-                    if (Math.abs(point.x - nextX) < PLAYER_SIZE*2 && Math.abs(point.y - nextY) < PLAYER_SIZE*2) {
-                        trailCollision = true;
-                        break;
+                
+                // Check game over
+                if (gameState.gameOver) {
+                    if (gameState.winner === playerId) {
+                        setTimeout(() => alert('VICTORY! You won the match!'), 100);
+                    } else if (gameState.winner) {
+                        setTimeout(() => alert('DEFEAT! Opponent won the match.'), 100);
+                    } else {
+                        setTimeout(() => alert('DRAW! No winner this time.'), 100);
                     }
-                }
-                if (trailCollision) continue;
-
-                // Score berechnen
-                let score = 0;
-                
-                // Zum Spieler hin bewegen
-                const newDxToPlayer = player1.x - nextX;
-                const newDyToPlayer = player1.y - nextY;
-                const newDistance = Math.sqrt(newDxToPlayer*newDxToPlayer + newDyToPlayer*newDyToPlayer);
-                
-                if (newDistance < distanceToPlayer) {
-                    score += 50;
-                } else {
-                    score -= 30;
-                }
-
-                // Zentrum der Arena bevorzugen
-                const arenaCenterX = arena.x + arena.width / 2;
-                const arenaCenterY = arena.y + arena.height / 2;
-                const distToCenter = Math.sqrt(
-                    Math.pow(nextX - arenaCenterX, 2) + 
-                    Math.pow(nextY - arenaCenterY, 2)
-                );
-                score += (arena.width / 2 - distToCenter) * 0.5;
-
-                // Aktuelle Richtung bevorzugen
-                if (dir.dx === player2.dx && dir.dy === player2.dy) {
-                    score += 20;
-                }
-
-                if (score > bestScore) {
-                    bestScore = score;
-                    bestDir = dir;
+                    
+                    setTimeout(() => {
+                        showLobbyScreen();
+                    }, 3000);
                 }
             }
-
-            // Richtung aktualisieren
-            player2.dx = bestDir.dx;
-            player2.dy = bestDir.dy;
-            player2.lastTurnFrame = frameCount;
-
-            // Bewegung
-            player2.x += player2.dx;
-            player2.y += player2.dy;
         }
 
-        // ==================== SPIEL-LOGIK ====================
-        function updatePlayer() {
-            if (!player1.alive) return;
-
-            // Richtung basierend auf Tasten
-            if (player1.keys.up && !player1.keys.down) { player1.dx = 0; player1.dy = -PLAYER_SPEED; }
-            if (player1.keys.down && !player1.keys.up) { player1.dx = 0; player1.dy = PLAYER_SPEED; }
-            if (player1.keys.left && !player1.keys.right) { player1.dx = -PLAYER_SPEED; player1.dy = 0; }
-            if (player1.keys.right && !player1.keys.left) { player1.dx = PLAYER_SPEED; player1.dy = 0; }
-
-            // Trail-Punkt hinzufügen
-            player1.trail.push({ x: Math.floor(player1.x), y: Math.floor(player1.y) });
-
-            // Bewegung
-            player1.x += player1.dx;
-            player1.y += player1.dy;
-
-            // Kollisionsprüfung
-            checkCollision(player1);
-        }
-
-        function checkCollision(player) {
-            if (!player.alive) return;
-
-            // Kollision mit Arena-Grenzen
-            if (player.x < arena.x || player.x >= arena.x + arena.width ||
-                player.y < arena.y || player.y >= arena.y + arena.height) {
-                killPlayer(player, "Wall");
+        // Render game based on server state
+        function renderGame() {
+            if (!gameState || !ctx) {
+                requestAnimationFrame(renderGame);
                 return;
             }
-
-            // Kollision mit eigenem Trail
-            for (let i = 0; i < player.trail.length - 10; i++) {
-                const point = player.trail[i];
-                if (Math.abs(point.x - player.x) < PLAYER_SIZE && Math.abs(point.y - player.y) < PLAYER_SIZE) {
-                    killPlayer(player, "Own trail");
-                    return;
-                }
-            }
-
-            // Kollision mit gegnerischem Trail
-            const opponent = player === player1 ? player2 : player1;
-            for (let i = 0; i < opponent.trail.length; i++) {
-                const point = opponent.trail[i];
-                if (Math.abs(point.x - player.x) < PLAYER_SIZE && Math.abs(point.y - player.y) < PLAYER_SIZE) {
-                    killPlayer(player, "Opponent trail");
-                    return;
-                }
-            }
-        }
-
-        function killPlayer(player, reason) {
-            if (!player.alive) return;
-            player.alive = false;
-            logEvent(`${player === player1 ? 'YOU' : 'OPPONENT'} eliminated (${reason})`);
-
-            if (player === player1) {
-                showFail();
-            }
-
-            checkGameEnd();
-        }
-
-        function showFail() {
-            document.getElementById('failOverlay').style.display = 'flex';
-            gameRunning = false;
-            clearInterval(timerInterval);
-        }
-
-        function updateTimer() {
-            if (!gameRunning) return;
-            timer--;
-            updateTimerDisplay();
-
-            if (timer <= 0) {
-                clearInterval(timerInterval);
-                endGameByTime();
-            }
-
-            if (timer <= MAX_TIME - SHRINK_START_TIME && !shrinkActive) {
-                shrinkActive = true;
-                logEvent("Arena shrinking!");
-            }
-        }
-
-        function updateTimerDisplay() {
-            document.getElementById('timer').textContent = timer.toString().padStart(2, '0');
-        }
-
-        function shrinkArena() {
-            if (!shrinkActive) return;
-            arena.x += SHRINK_SPEED;
-            arena.y += SHRINK_SPEED;
-            arena.width -= SHRINK_SPEED * 2;
-            arena.height -= SHRINK_SPEED * 2;
-
-            const border = document.getElementById('arenaBorder');
-            border.style.left = `${arena.x}px`;
-            border.style.top = `${arena.y}px`;
-            border.style.width = `${arena.width}px`;
-            border.style.height = `${arena.height}px`;
-        }
-
-        function calculateTerritory() {
-            // Trail-Punkte für Territorium zählen
-            const totalCells = arena.width * arena.height / (GRID_SIZE * GRID_SIZE);
             
-            // Nur lebende Spieler sammeln Territorium
-            if (player1.alive) {
-                player1.territory = player1.trail.length * GRID_SIZE * 2;
-            }
-            if (player2.alive) {
-                player2.territory = player2.trail.length * GRID_SIZE * 2;
-            }
-
-            const total = player1.territory + player2.territory;
-            const p1Percent = total > 0 ? Math.round((player1.territory / total) * 100) : 50;
-            const p2Percent = 100 - p1Percent;
-
-            document.getElementById('p1Percent').textContent = `${p1Percent}%`;
-            document.getElementById('p2Percent').textContent = `${p2Percent}%`;
-            document.getElementById('territoryCount').textContent = `${player1.territory} / ${player2.territory}`;
-
-            document.getElementById('p1Status').textContent = player1.alive ? 'ALIVE' : 'ELIMINATED';
-            document.getElementById('p1Status').style.color = player1.alive ? '#0f0' : '#f00';
-            document.getElementById('p2Status').textContent = player2.alive ? 'ALIVE' : 'ELIMINATED';
-            document.getElementById('p2Status').style.color = player2.alive ? '#0f0' : '#f00';
-        }
-
-        function checkGameEnd() {
-            if (!player1.alive && !player2.alive) {
-                logEvent("Double elimination!");
-                gameRunning = false;
-            } else if (!player1.alive && player2.alive) {
-                logEvent("OPPONENT wins!");
-                gameRunning = false;
-            } else if (player1.alive && !player2.alive) {
-                logEvent("YOU win!");
-                gameRunning = false;
-            }
-        }
-
-        function endGameByTime() {
-            gameRunning = false;
-            calculateTerritory();
-            const p1Percent = parseInt(document.getElementById('p1Percent').textContent);
-            const winner = p1Percent > 50 ? "YOU" : "OPPONENT";
-            logEvent(`Time's up! ${winner} wins with ${Math.max(p1Percent, 100-p1Percent)}% territory!`);
-        }
-
-        function logEvent(message) {
-            const feed = document.getElementById('liveFeed');
-            const li = document.createElement('li');
-            li.textContent = message;
-            feed.prepend(li);
-            if (feed.children.length > 8) feed.removeChild(feed.lastChild);
-        }
-
-        function updateUI() {
-            calculateTerritory();
-        }
-
-        // ==================== ZEICHNEN ====================
-        function draw() {
-            // Hintergrund
+            // Clear canvas
             ctx.fillStyle = COLORS.background;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            // Arena-Hintergrund
+            
+            // Draw arena background
+            const arena = gameState.arena;
             ctx.fillStyle = '#0a0a0a';
             ctx.fillRect(arena.x, arena.y, arena.width, arena.height);
-
-            // Trails zeichnen
-            drawTrail(player1);
-            drawTrail(player2);
-
-            // Spieler zeichnen
-            drawPlayer(player1);
-            drawPlayer(player2);
-
-            // Arena-Rahmen
+            
+            // Draw trails
+            gameState.players.forEach(player => {
+                drawTrail(player);
+            });
+            
+            // Draw players
+            gameState.players.forEach(player => {
+                drawPlayer(player);
+            });
+            
+            // Draw arena border
             ctx.strokeStyle = '#333';
             ctx.lineWidth = 2;
             ctx.strokeRect(arena.x, arena.y, arena.width, arena.height);
-
-            // Shrink-Visualisierung
-            if (shrinkActive) {
+            
+            // Draw shrink visualization
+            if (arena.shrinkActive) {
                 ctx.strokeStyle = '#ff5500';
                 ctx.lineWidth = 1;
                 ctx.setLineDash([5, 5]);
-                const shrink = (MAX_TIME - timer - SHRINK_START_TIME) * 0.5;
+                const elapsed = 60 - gameState.timeLeft - 20;
+                const shrink = Math.max(0, elapsed) * 0.5;
                 ctx.strokeRect(arena.x - shrink, arena.y - shrink, arena.width + shrink*2, arena.height + shrink*2);
                 ctx.setLineDash([]);
             }
+            
+            requestAnimationFrame(renderGame);
         }
 
         function drawTrail(player) {
             if (player.trail.length < 2) return;
-            ctx.strokeStyle = player.trailColor;
+            ctx.strokeStyle = player.color === COLORS.p1 ? COLORS.p1Trail : COLORS.p2Trail;
             ctx.lineWidth = PLAYER_SIZE;
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
@@ -800,36 +738,165 @@ const ws = new WebSocket("wss://skill-arena-backend.onrender.com");
             ctx.beginPath();
             ctx.arc(player.x, player.y, PLAYER_SIZE, 0, Math.PI * 2);
             ctx.fill();
-            // Richtungsanzeige
+            // Direction indicator
             ctx.fillStyle = '#fff';
             ctx.beginPath();
             ctx.arc(player.x + player.dx * 2, player.y + player.dy * 2, PLAYER_SIZE/2, 0, Math.PI * 2);
             ctx.fill();
         }
 
-        // ==================== GAME LOOP ====================
-        function gameLoop() {
-            if (gameRunning) {
-                updatePlayer();
-                updateAI();
-                
-                // Trail für KI hinzufügen
-                if (player2.alive) {
-                    player2.trail.push({ x: Math.floor(player2.x), y: Math.floor(player2.y) });
-                }
-                
-                // Kollision für KI prüfen
-                checkCollision(player2);
-                
-                shrinkArena();
-                updateUI();
+        // Update lobby list
+        function updateLobbyList(lobbies) {
+            lobbyList.innerHTML = '';
+            
+            if (lobbies.length === 0) {
+                lobbyStatus.textContent = 'No open lobbies found';
+                lobbyStatus.className = 'status info';
+                return;
             }
-            draw();
-            animationId = requestAnimationFrame(gameLoop);
+            
+            lobbies.forEach(lobby => {
+                const li = document.createElement('li');
+                li.className = 'lobby-item';
+                li.innerHTML = `
+                    <div>
+                        <span class="lobby-code">${lobby.id}</span>
+                    </div>
+                    <div class="lobby-players">${lobby.players}/${lobby.maxPlayers} players</div>
+                `;
+                
+                li.addEventListener('click', () => {
+                    lobbyCodeInput.value = lobby.id;
+                    joinLobbyBtn.focus();
+                });
+                
+                lobbyList.appendChild(li);
+            });
+            
+            lobbyStatus.textContent = `Found ${lobbies.length} open lobbies`;
+            lobbyStatus.className = 'status success';
         }
 
-        // ==================== START ====================
-        window.onload = init;
+        // Send player input to server
+        function sendPlayerInput() {
+            if (socket && socket.readyState === WebSocket.OPEN && lobbyId) {
+                socket.send(JSON.stringify({
+                    type: 'player_input',
+                    keys: { ...keys }
+                }));
+            }
+        }
+
+        // Event Listeners
+        createLobbyBtn.addEventListener('click', () => {
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({ type: 'create_lobby' }));
+            }
+        });
+
+        joinLobbyBtn.addEventListener('click', () => {
+            const code = lobbyCodeInput.value.trim().toUpperCase();
+            if (code.length === 5 && socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                    type: 'join_lobby',
+                    lobbyId: code
+                }));
+            } else {
+                alert('Please enter a valid 5-character lobby code');
+            }
+        });
+
+        refreshLobbiesBtn.addEventListener('click', () => {
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({ type: 'get_lobbies' }));
+            }
+        });
+
+        leaveGameBtn.addEventListener('click', () => {
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({ type: 'leave_lobby' }));
+                showLobbyScreen();
+            }
+        });
+
+        // Keyboard controls
+        document.addEventListener('keydown', (e) => {
+            if (currentScreen !== 'game') return;
+            
+            switch(e.key.toLowerCase()) {
+                case 'w':
+                case 'arrowup':
+                    keys.up = true;
+                    document.getElementById('keyW').classList.add('active');
+                    document.getElementById('keyUp').classList.add('active');
+                    break;
+                case 'a':
+                case 'arrowleft':
+                    keys.left = true;
+                    document.getElementById('keyA').classList.add('active');
+                    document.getElementById('keyLeft').classList.add('active');
+                    break;
+                case 's':
+                case 'arrowdown':
+                    keys.down = true;
+                    document.getElementById('keyS').classList.add('active');
+                    document.getElementById('keyDown').classList.add('active');
+                    break;
+                case 'd':
+                case 'arrowright':
+                    keys.right = true;
+                    document.getElementById('keyD').classList.add('active');
+                    document.getElementById('keyRight').classList.add('active');
+                    break;
+            }
+            
+            sendPlayerInput();
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if (currentScreen !== 'game') return;
+            
+            switch(e.key.toLowerCase()) {
+                case 'w':
+                case 'arrowup':
+                    keys.up = false;
+                    document.getElementById('keyW').classList.remove('active');
+                    document.getElementById('keyUp').classList.remove('active');
+                    break;
+                case 'a':
+                case 'arrowleft':
+                    keys.left = false;
+                    document.getElementById('keyA').classList.remove('active');
+                    document.getElementById('keyLeft').classList.remove('active');
+                    break;
+                case 's':
+                case 'arrowdown':
+                    keys.down = false;
+                    document.getElementById('keyS').classList.remove('active');
+                    document.getElementById('keyDown').classList.remove('active');
+                    break;
+                case 'd':
+                case 'arrowright':
+                    keys.right = false;
+                    document.getElementById('keyD').classList.remove('active');
+                    document.getElementById('keyRight').classList.remove('active');
+                    break;
+            }
+            
+            sendPlayerInput();
+        });
+
+        // Initialize
+        window.addEventListener('load', () => {
+            initWebSocket();
+            
+            // Refresh lobby list every 10 seconds
+            setInterval(() => {
+                if (socket && socket.readyState === WebSocket.OPEN && currentScreen === 'lobby') {
+                    socket.send(JSON.stringify({ type: 'get_lobbies' }));
+                }
+            }, 10000);
+        });
     </script>
 </body>
 </html>
