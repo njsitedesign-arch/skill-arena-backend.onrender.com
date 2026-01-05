@@ -1,0 +1,835 @@
+const ws = new WebSocket("https://skill-arena-backend.onrender.com");
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TERRITORY 1v1 | SKILL-BASED</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: #000;
+            color: #eee;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 20px;
+            background: #111;
+            border-bottom: 1px solid #222;
+            height: 60px;
+        }
+
+        .pool {
+            background: linear-gradient(90deg, #003300, #006600);
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 14px;
+            border: 1px solid #00aa00;
+        }
+
+        .timer {
+            font-size: 28px;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 0 0 10px #00aaff;
+        }
+
+        .game-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 220px;
+            background: #0a0a0a;
+            padding: 15px;
+            border-right: 1px solid #222;
+            overflow-y: auto;
+        }
+
+        .sidebar.right {
+            border-right: none;
+            border-left: 1px solid #222;
+        }
+
+        .sidebar-title {
+            color: #888;
+            font-size: 12px;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .live-feed {
+            list-style: none;
+        }
+
+        .live-feed li {
+            padding: 8px 10px;
+            margin-bottom: 6px;
+            background: #151515;
+            border-left: 3px solid #ff5500;
+            font-size: 13px;
+            color: #ccc;
+        }
+
+        .player-stats {
+            margin-top: 20px;
+        }
+
+        .stat {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            background: #151515;
+            margin-bottom: 8px;
+            border-radius: 4px;
+        }
+
+        .stat.you {
+            border-left: 4px solid #9d4edd;
+        }
+
+        .stat.opponent {
+            border-left: 4px solid #00bbff;
+        }
+
+        .percentage {
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .canvas-container {
+            flex: 1;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        #gameCanvas {
+            background: #000;
+            display: block;
+        }
+
+        .fail-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(200, 0, 0, 0.85);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            font-size: 120px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 0 0 30px black;
+            z-index: 100;
+            animation: pulse 0.5s infinite alternate;
+        }
+
+        @keyframes pulse {
+            from { opacity: 0.9; }
+            to { opacity: 1; }
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            right: 240px;
+            background: rgba(20, 20, 20, 0.9);
+            padding: 15px 25px;
+            border-radius: 10px;
+            text-align: center;
+            border: 1px solid #333;
+            z-index: 50;
+        }
+
+        .controls h3 {
+            margin-bottom: 10px;
+            color: #aaa;
+        }
+
+        .key {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            background: #222;
+            color: #fff;
+            line-height: 40px;
+            margin: 5px;
+            border-radius: 6px;
+            font-weight: bold;
+            border: 1px solid #444;
+        }
+
+        .key.active {
+            background: #444;
+            border-color: #9d4edd;
+        }
+
+        .restart-btn {
+            background: linear-gradient(90deg, #9d4edd, #7b2cbf);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            font-size: 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 15px;
+            transition: transform 0.1s;
+        }
+
+        .restart-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .hint {
+            color: #666;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+
+        .player-label {
+            position: absolute;
+            top: 10px;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        #player1Label {
+            left: 10px;
+            background: rgba(157, 78, 221, 0.2);
+            border: 1px solid #9d4edd;
+        }
+
+        #player2Label {
+            right: 10px;
+            background: rgba(0, 187, 255, 0.2);
+            border: 1px solid #00bbff;
+        }
+
+        .arena-border {
+            position: absolute;
+            box-shadow: 0 0 0 2px #333;
+            pointer-events: none;
+            transition: all 1s linear;
+        }
+    </style>
+</head>
+<body>
+    <div class="top-bar">
+        <div class="pool">POOL: 10 USDC (DEMO)</div>
+        <div class="timer" id="timer">60</div>
+        <div class="hint">NO RNG • PURE SKILL</div>
+    </div>
+
+    <div class="game-container">
+        <div class="sidebar">
+            <div class="sidebar-title">Live Feed</div>
+            <ul class="live-feed" id="liveFeed">
+                <li>Match started</li>
+                <li>player23 joined</li>
+                <li>player87 eliminated</li>
+                <li>Territory: 54% vs 46%</li>
+            </ul>
+        </div>
+
+        <div class="canvas-container">
+            <div id="player1Label" class="player-label">YOU (PURPLE)</div>
+            <div id="player2Label" class="player-label">OPPONENT (CYAN)</div>
+            <canvas id="gameCanvas"></canvas>
+            <div class="arena-border" id="arenaBorder"></div>
+            <div class="fail-overlay" id="failOverlay">FAIL</div>
+        </div>
+
+        <div class="sidebar right">
+            <div class="sidebar-title">Player Stats</div>
+            <div class="player-stats">
+                <div class="stat you">
+                    <span>YOU</span>
+                    <span class="percentage" id="p1Percent">50%</span>
+                </div>
+                <div class="stat opponent">
+                    <span>OPPONENT</span>
+                    <span class="percentage" id="p2Percent">50%</span>
+                </div>
+                <div class="stat">
+                    <span>Status</span>
+                    <span style="color: #0f0;" id="p1Status">ALIVE</span>
+                </div>
+                <div class="stat">
+                    <span>Status</span>
+                    <span style="color: #0f0;" id="p2Status">ALIVE</span>
+                </div>
+                <div class="stat">
+                    <span>Territory</span>
+                    <span id="territoryCount">0 / 0</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <h3>CONTROLS</h3>
+        <div>
+            <div class="key" id="keyW">W</div>
+        </div>
+        <div>
+            <div class="key" id="keyA">A</div>
+            <div class="key" id="keyS">S</div>
+            <div class="key" id="keyD">D</div>
+        </div>
+        <div>
+            <span style="color:#888">or</span>
+            <div class="key" id="keyUp">↑</div>
+        </div>
+        <div>
+            <div class="key" id="keyLeft">←</div>
+            <div class="key" id="keyDown">↓</div>
+            <div class="key" id="keyRight">→</div>
+        </div>
+        <button class="restart-btn" id="restartBtn">RESTART MATCH</button>
+        <div class="hint">Avoid walls, your trail, opponent's trail. Control territory!</div>
+    </div>
+
+    <script>
+        // ==================== KONFIGURATION ====================
+        const CANVAS_WIDTH = 800;
+        const CANVAS_HEIGHT = 600;
+        const GRID_SIZE = 4;
+        const PLAYER_SIZE = 6;
+        const PLAYER_SPEED = 3.5;
+        const MAX_TIME = 60;
+        const SHRINK_START_TIME = 20;
+        const SHRINK_SPEED = 0.2;
+        const COLORS = {
+            background: '#000',
+            p1: '#9d4edd',
+            p1Trail: '#7b2cbf',
+            p2: '#00bbff',
+            p2Trail: '#0099cc',
+            wall: '#222'
+        };
+
+        // ==================== SPIELZUSTAND ====================
+        let canvas, ctx;
+        let gameRunning = false;
+        let timer = MAX_TIME;
+        let timerInterval;
+        let animationId;
+        let arena = {
+            x: 50,
+            y: 50,
+            width: CANVAS_WIDTH - 100,
+            height: CANVAS_HEIGHT - 100
+        };
+        let shrinkActive = false;
+
+        // Spielerobjekte
+        const player1 = {
+            x: arena.x + 100,
+            y: arena.y + arena.height / 2,
+            dx: PLAYER_SPEED,
+            dy: 0,
+            color: COLORS.p1,
+            trailColor: COLORS.p1Trail,
+            trail: [],
+            alive: true,
+            territory: 0,
+            keys: {
+                up: false,
+                left: false,
+                down: false,
+                right: false
+            }
+        };
+
+        const player2 = {
+            x: arena.x + arena.width - 100,
+            y: arena.y + arena.height / 2,
+            dx: -PLAYER_SPEED,
+            dy: 0,
+            color: COLORS.p2,
+            trailColor: COLORS.p2Trail,
+            trail: [],
+            alive: true,
+            territory: 0,
+            lastTurnFrame: 0,
+            turnCooldown: 20
+        };
+
+        // ==================== INITIALISIERUNG ====================
+        function init() {
+            canvas = document.getElementById('gameCanvas');
+            ctx = canvas.getContext('2d');
+            canvas.width = CANVAS_WIDTH;
+            canvas.height = CANVAS_HEIGHT;
+
+            resetGame();
+            setupEventListeners();
+            draw();
+        }
+
+        function resetGame() {
+            gameRunning = true;
+            timer = MAX_TIME;
+            shrinkActive = false;
+            arena = {
+                x: 50,
+                y: 50,
+                width: CANVAS_WIDTH - 100,
+                height: CANVAS_HEIGHT - 100
+            };
+
+            player1.x = arena.x + 100;
+            player1.y = arena.y + arena.height / 2;
+            player1.dx = PLAYER_SPEED;
+            player1.dy = 0;
+            player1.trail = [];
+            player1.alive = true;
+            player1.territory = 0;
+            Object.keys(player1.keys).forEach(k => player1.keys[k] = false);
+
+            player2.x = arena.x + arena.width - 100;
+            player2.y = arena.y + arena.height / 2;
+            player2.dx = -PLAYER_SPEED;
+            player2.dy = 0;
+            player2.trail = [];
+            player2.alive = true;
+            player2.territory = 0;
+            player2.lastTurnFrame = 0;
+
+            document.getElementById('failOverlay').style.display = 'none';
+            updateTimerDisplay();
+            updateUI();
+
+            clearInterval(timerInterval);
+            timerInterval = setInterval(updateTimer, 1000);
+
+            cancelAnimationFrame(animationId);
+            animationId = requestAnimationFrame(gameLoop);
+        }
+
+        // ==================== EVENT LISTENER ====================
+        function setupEventListeners() {
+            document.addEventListener('keydown', (e) => {
+                if (!gameRunning) return;
+
+                switch(e.key.toLowerCase()) {
+                    case 'w': player1.keys.up = true; break;
+                    case 'a': player1.keys.left = true; break;
+                    case 's': player1.keys.down = true; break;
+                    case 'd': player1.keys.right = true; break;
+                    case 'arrowup': player1.keys.up = true; break;
+                    case 'arrowleft': player1.keys.left = true; break;
+                    case 'arrowdown': player1.keys.down = true; break;
+                    case 'arrowright': player1.keys.right = true; break;
+                }
+                updateKeyVisuals();
+            });
+
+            document.addEventListener('keyup', (e) => {
+                switch(e.key.toLowerCase()) {
+                    case 'w': player1.keys.up = false; break;
+                    case 'a': player1.keys.left = false; break;
+                    case 's': player1.keys.down = false; break;
+                    case 'd': player1.keys.right = false; break;
+                    case 'arrowup': player1.keys.up = false; break;
+                    case 'arrowleft': player1.keys.left = false; break;
+                    case 'arrowdown': player1.keys.down = false; break;
+                    case 'arrowright': player1.keys.right = false; break;
+                }
+                updateKeyVisuals();
+            });
+
+            document.getElementById('restartBtn').addEventListener('click', resetGame);
+        }
+
+        function updateKeyVisuals() {
+            const keyIds = {
+                'w': 'keyW', 'a': 'keyA', 's': 'keyS', 'd': 'keyD',
+                'arrowup': 'keyUp', 'arrowleft': 'keyLeft',
+                'arrowdown': 'keyDown', 'arrowright': 'keyRight'
+            };
+            Object.keys(keyIds).forEach(key => {
+                const elem = document.getElementById(keyIds[key]);
+                if (elem) {
+                    const keyName = key.replace('arrow', '');
+                    elem.classList.toggle('active', player1.keys[keyName]);
+                }
+            });
+        }
+
+        // ==================== KI LOGIK ====================
+        function updateAI() {
+            if (!player2.alive) return;
+
+            const frameCount = performance.now() / 16;
+            
+            // Nur alle X Frames Entscheidungen treffen
+            if (frameCount - player2.lastTurnFrame < player2.turnCooldown) {
+                // Normale Bewegung beibehalten
+                player2.x += player2.dx;
+                player2.y += player2.dy;
+                return;
+            }
+
+            // Mögliche Richtungen testen
+            const directions = [
+                {dx: PLAYER_SPEED, dy: 0},   // rechts
+                {dx: -PLAYER_SPEED, dy: 0},  // links
+                {dx: 0, dy: PLAYER_SPEED},   // unten
+                {dx: 0, dy: -PLAYER_SPEED}   // oben
+            ];
+
+            // Aktuelle Richtung beibehalten, wenn sicher
+            let bestDir = {dx: player2.dx, dy: player2.dy};
+            let bestScore = -Infinity;
+
+            // Spieler verfolgen (deterministisch basierend auf Position)
+            const dxToPlayer = player1.x - player2.x;
+            const dyToPlayer = player1.y - player2.y;
+            const distanceToPlayer = Math.sqrt(dxToPlayer*dxToPlayer + dyToPlayer*dyToPlayer);
+
+            for (const dir of directions) {
+                // Nicht in die entgegengesetzte Richtung
+                if (dir.dx === -player2.dx && dir.dy === -player2.dy) continue;
+
+                const nextX = player2.x + dir.dx * 5;
+                const nextY = player2.y + dir.dy * 5;
+
+                // Wandkollision vermeiden
+                if (nextX < arena.x + PLAYER_SIZE || nextX >= arena.x + arena.width - PLAYER_SIZE ||
+                    nextY < arena.y + PLAYER_SIZE || nextY >= arena.y + arena.height - PLAYER_SIZE) {
+                    continue;
+                }
+
+                // Trail-Kollision vermeiden
+                let trailCollision = false;
+                for (let i = 0; i < player2.trail.length - 5; i++) {
+                    const point = player2.trail[i];
+                    if (Math.abs(point.x - nextX) < PLAYER_SIZE*2 && Math.abs(point.y - nextY) < PLAYER_SIZE*2) {
+                        trailCollision = true;
+                        break;
+                    }
+                }
+                if (trailCollision) continue;
+
+                // Score berechnen
+                let score = 0;
+                
+                // Zum Spieler hin bewegen
+                const newDxToPlayer = player1.x - nextX;
+                const newDyToPlayer = player1.y - nextY;
+                const newDistance = Math.sqrt(newDxToPlayer*newDxToPlayer + newDyToPlayer*newDyToPlayer);
+                
+                if (newDistance < distanceToPlayer) {
+                    score += 50;
+                } else {
+                    score -= 30;
+                }
+
+                // Zentrum der Arena bevorzugen
+                const arenaCenterX = arena.x + arena.width / 2;
+                const arenaCenterY = arena.y + arena.height / 2;
+                const distToCenter = Math.sqrt(
+                    Math.pow(nextX - arenaCenterX, 2) + 
+                    Math.pow(nextY - arenaCenterY, 2)
+                );
+                score += (arena.width / 2 - distToCenter) * 0.5;
+
+                // Aktuelle Richtung bevorzugen
+                if (dir.dx === player2.dx && dir.dy === player2.dy) {
+                    score += 20;
+                }
+
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestDir = dir;
+                }
+            }
+
+            // Richtung aktualisieren
+            player2.dx = bestDir.dx;
+            player2.dy = bestDir.dy;
+            player2.lastTurnFrame = frameCount;
+
+            // Bewegung
+            player2.x += player2.dx;
+            player2.y += player2.dy;
+        }
+
+        // ==================== SPIEL-LOGIK ====================
+        function updatePlayer() {
+            if (!player1.alive) return;
+
+            // Richtung basierend auf Tasten
+            if (player1.keys.up && !player1.keys.down) { player1.dx = 0; player1.dy = -PLAYER_SPEED; }
+            if (player1.keys.down && !player1.keys.up) { player1.dx = 0; player1.dy = PLAYER_SPEED; }
+            if (player1.keys.left && !player1.keys.right) { player1.dx = -PLAYER_SPEED; player1.dy = 0; }
+            if (player1.keys.right && !player1.keys.left) { player1.dx = PLAYER_SPEED; player1.dy = 0; }
+
+            // Trail-Punkt hinzufügen
+            player1.trail.push({ x: Math.floor(player1.x), y: Math.floor(player1.y) });
+
+            // Bewegung
+            player1.x += player1.dx;
+            player1.y += player1.dy;
+
+            // Kollisionsprüfung
+            checkCollision(player1);
+        }
+
+        function checkCollision(player) {
+            if (!player.alive) return;
+
+            // Kollision mit Arena-Grenzen
+            if (player.x < arena.x || player.x >= arena.x + arena.width ||
+                player.y < arena.y || player.y >= arena.y + arena.height) {
+                killPlayer(player, "Wall");
+                return;
+            }
+
+            // Kollision mit eigenem Trail
+            for (let i = 0; i < player.trail.length - 10; i++) {
+                const point = player.trail[i];
+                if (Math.abs(point.x - player.x) < PLAYER_SIZE && Math.abs(point.y - player.y) < PLAYER_SIZE) {
+                    killPlayer(player, "Own trail");
+                    return;
+                }
+            }
+
+            // Kollision mit gegnerischem Trail
+            const opponent = player === player1 ? player2 : player1;
+            for (let i = 0; i < opponent.trail.length; i++) {
+                const point = opponent.trail[i];
+                if (Math.abs(point.x - player.x) < PLAYER_SIZE && Math.abs(point.y - player.y) < PLAYER_SIZE) {
+                    killPlayer(player, "Opponent trail");
+                    return;
+                }
+            }
+        }
+
+        function killPlayer(player, reason) {
+            if (!player.alive) return;
+            player.alive = false;
+            logEvent(`${player === player1 ? 'YOU' : 'OPPONENT'} eliminated (${reason})`);
+
+            if (player === player1) {
+                showFail();
+            }
+
+            checkGameEnd();
+        }
+
+        function showFail() {
+            document.getElementById('failOverlay').style.display = 'flex';
+            gameRunning = false;
+            clearInterval(timerInterval);
+        }
+
+        function updateTimer() {
+            if (!gameRunning) return;
+            timer--;
+            updateTimerDisplay();
+
+            if (timer <= 0) {
+                clearInterval(timerInterval);
+                endGameByTime();
+            }
+
+            if (timer <= MAX_TIME - SHRINK_START_TIME && !shrinkActive) {
+                shrinkActive = true;
+                logEvent("Arena shrinking!");
+            }
+        }
+
+        function updateTimerDisplay() {
+            document.getElementById('timer').textContent = timer.toString().padStart(2, '0');
+        }
+
+        function shrinkArena() {
+            if (!shrinkActive) return;
+            arena.x += SHRINK_SPEED;
+            arena.y += SHRINK_SPEED;
+            arena.width -= SHRINK_SPEED * 2;
+            arena.height -= SHRINK_SPEED * 2;
+
+            const border = document.getElementById('arenaBorder');
+            border.style.left = `${arena.x}px`;
+            border.style.top = `${arena.y}px`;
+            border.style.width = `${arena.width}px`;
+            border.style.height = `${arena.height}px`;
+        }
+
+        function calculateTerritory() {
+            // Trail-Punkte für Territorium zählen
+            const totalCells = arena.width * arena.height / (GRID_SIZE * GRID_SIZE);
+            
+            // Nur lebende Spieler sammeln Territorium
+            if (player1.alive) {
+                player1.territory = player1.trail.length * GRID_SIZE * 2;
+            }
+            if (player2.alive) {
+                player2.territory = player2.trail.length * GRID_SIZE * 2;
+            }
+
+            const total = player1.territory + player2.territory;
+            const p1Percent = total > 0 ? Math.round((player1.territory / total) * 100) : 50;
+            const p2Percent = 100 - p1Percent;
+
+            document.getElementById('p1Percent').textContent = `${p1Percent}%`;
+            document.getElementById('p2Percent').textContent = `${p2Percent}%`;
+            document.getElementById('territoryCount').textContent = `${player1.territory} / ${player2.territory}`;
+
+            document.getElementById('p1Status').textContent = player1.alive ? 'ALIVE' : 'ELIMINATED';
+            document.getElementById('p1Status').style.color = player1.alive ? '#0f0' : '#f00';
+            document.getElementById('p2Status').textContent = player2.alive ? 'ALIVE' : 'ELIMINATED';
+            document.getElementById('p2Status').style.color = player2.alive ? '#0f0' : '#f00';
+        }
+
+        function checkGameEnd() {
+            if (!player1.alive && !player2.alive) {
+                logEvent("Double elimination!");
+                gameRunning = false;
+            } else if (!player1.alive && player2.alive) {
+                logEvent("OPPONENT wins!");
+                gameRunning = false;
+            } else if (player1.alive && !player2.alive) {
+                logEvent("YOU win!");
+                gameRunning = false;
+            }
+        }
+
+        function endGameByTime() {
+            gameRunning = false;
+            calculateTerritory();
+            const p1Percent = parseInt(document.getElementById('p1Percent').textContent);
+            const winner = p1Percent > 50 ? "YOU" : "OPPONENT";
+            logEvent(`Time's up! ${winner} wins with ${Math.max(p1Percent, 100-p1Percent)}% territory!`);
+        }
+
+        function logEvent(message) {
+            const feed = document.getElementById('liveFeed');
+            const li = document.createElement('li');
+            li.textContent = message;
+            feed.prepend(li);
+            if (feed.children.length > 8) feed.removeChild(feed.lastChild);
+        }
+
+        function updateUI() {
+            calculateTerritory();
+        }
+
+        // ==================== ZEICHNEN ====================
+        function draw() {
+            // Hintergrund
+            ctx.fillStyle = COLORS.background;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Arena-Hintergrund
+            ctx.fillStyle = '#0a0a0a';
+            ctx.fillRect(arena.x, arena.y, arena.width, arena.height);
+
+            // Trails zeichnen
+            drawTrail(player1);
+            drawTrail(player2);
+
+            // Spieler zeichnen
+            drawPlayer(player1);
+            drawPlayer(player2);
+
+            // Arena-Rahmen
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(arena.x, arena.y, arena.width, arena.height);
+
+            // Shrink-Visualisierung
+            if (shrinkActive) {
+                ctx.strokeStyle = '#ff5500';
+                ctx.lineWidth = 1;
+                ctx.setLineDash([5, 5]);
+                const shrink = (MAX_TIME - timer - SHRINK_START_TIME) * 0.5;
+                ctx.strokeRect(arena.x - shrink, arena.y - shrink, arena.width + shrink*2, arena.height + shrink*2);
+                ctx.setLineDash([]);
+            }
+        }
+
+        function drawTrail(player) {
+            if (player.trail.length < 2) return;
+            ctx.strokeStyle = player.trailColor;
+            ctx.lineWidth = PLAYER_SIZE;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.beginPath();
+            ctx.moveTo(player.trail[0].x, player.trail[0].y);
+            for (let i = 1; i < player.trail.length; i++) {
+                ctx.lineTo(player.trail[i].x, player.trail[i].y);
+            }
+            ctx.stroke();
+        }
+
+        function drawPlayer(player) {
+            if (!player.alive) return;
+            ctx.fillStyle = player.color;
+            ctx.beginPath();
+            ctx.arc(player.x, player.y, PLAYER_SIZE, 0, Math.PI * 2);
+            ctx.fill();
+            // Richtungsanzeige
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.arc(player.x + player.dx * 2, player.y + player.dy * 2, PLAYER_SIZE/2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // ==================== GAME LOOP ====================
+        function gameLoop() {
+            if (gameRunning) {
+                updatePlayer();
+                updateAI();
+                
+                // Trail für KI hinzufügen
+                if (player2.alive) {
+                    player2.trail.push({ x: Math.floor(player2.x), y: Math.floor(player2.y) });
+                }
+                
+                // Kollision für KI prüfen
+                checkCollision(player2);
+                
+                shrinkArena();
+                updateUI();
+            }
+            draw();
+            animationId = requestAnimationFrame(gameLoop);
+        }
+
+        // ==================== START ====================
+        window.onload = init;
+    </script>
+</body>
+</html>
